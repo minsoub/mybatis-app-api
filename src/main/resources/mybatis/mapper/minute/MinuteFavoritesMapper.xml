@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.minute.mapper.MinuteFavoritesMapper'>
+
+    <!-- Minute Favorites가 존재하는지 체크한다. -->
+    <select id="isMinuteFavorites" resultType="int">
+        SELECT
+               IF(count(*) > 0, 1, 0) AS isFavorites
+          FROM fantoo2.fantoo_minute_favorites
+         WHERE
+               sub_idx = #{subIdx}
+           AND integ_uid = #{integUid}
+    </select>
+
+    <!-- Minute 즐겨찾기를 삭제한다 -->
+    <delete id="deleteMinuteFavorite">
+        DELETE
+          FROM fantoo2.fantoo_minute_favorites
+         WHERE
+               sub_idx = #{subIdx}
+           AND integ_uid = #{integUid}
+    </delete>
+
+    <!-- Minute 즐겨찾기를 등록한다 -->
+    <insert id="insertMinuteFavorite" useGeneratedKeys="true" keyColumn="idx">
+        INSERT INTO fantoo2.fantoo_minute_favorites (
+            sub_idx,
+            integ_uid,
+            updated_date
+        ) VALUES (
+            #{subIdx},
+            #{integUid},
+            now()
+        )
+    </insert>
+
+    <!-- Minute 즐겨찾기 상세 정보를 리턴한다 -->
+    <select id="getMinuteFavorites" resultType="kr.co.fns.app.api.minute.entity.MinuteFavorites">
+        SELECT
+               idx, sub_idx, integ_uid, updated_date
+          FROM fantoo2.fantoo_minute_favorites
+         WHERE
+               sub_idx = #{subIdx}
+           AND integ_uid = #{integUid}
+    </select>
+
+    <!-- 나의 Minute 즐겨찾기 총 개수를 리턴한다. -->
+    <select id="getMinuteFavoritesTotal" resultType="int">
+        SELECT
+               COUNT(*) / #{showMinute} AS total
+          FROM fantoo2.fantoo_minute_favorites a,
+               fantoo2.fantoo_minute b
+         WHERE
+               a.integ_uid = #{integUid}
+           AND a.sub_idx = b.idx
+           AND b.is_view IN (1, 2)
+    </select>
+
+    <!-- 나의 Minute 북마크 리스트를 리턴한다  -->
+    <select id="getMinuteFavoritesList" resultType="kr.co.fns.app.api.minute.entity.MinuteFavoritesDetail">
+        SELECT
+               minute.idx, minute.integ_uid, minute.lang, minute.title, minute.content,
+               minute.image, minute.video, minute.is_view, minute.scv_yn, minute.view_count, minute.good_count, minute.bad_count,
+               minute.reply_count, minute.created_date, minute.update_date,
+               IF(users.user_nick != '', users.user_nick, '') as user_nickname,
+               IF(users.user_photo != '', users.user_photo, '') as user_photo  , 1 as fav, ifnull(likes.like_type,"none") as like_type,
+               f.hashtag_list,
+               IF( LENGTH(g.minute_song_id) > 0, true, false) as is_sound_track,
+               g.minute_song_id
+         FROM fantoo2.fantoo_minute_favorites as fav_list
+            LEFT JOIN fantoo2.fantoo_minute as minute On minute.idx = fav_list.sub_idx AND minute.is_view IN (1, 2)
+            LEFT JOIN fantoo.users as users ON users.integ_uid = minute.integ_uid
+            LEFT JOIN fantoo2.fantoo_minute_likes as likes On likes.integ_uid = fav_list.integ_uid and likes.sub_idx = fav_list.sub_idx
+            LEFT JOIN (
+                SELECT
+                        minute_id, group_concat(tag order by minute_hashtag_id ASC separator ',') as hashtag_list
+                  FROM fantoo.fantoo_minute_hashtag
+                 GROUP BY minute_id
+            ) AS f ON minute.idx = f.minute_id
+            LEFT JOIN fantoo.fantoo_minute_song_mapping as g ON minute.idx = g.minute_id
+
+        where fav_list.integ_uid = #{integUid}
+        ORDER BY
+        <choose>
+            <when test="sortingNum == 9">  <!-- 추천순 -->
+                fav_list.idx ASC
+            </when>
+            <otherwise>  <!-- 인기순 -->
+                fav_list.idx DESC
+            </otherwise>
+        </choose>
+
+        <choose>
+            <when test="nextCheck == true">  <!-- 추천순 -->
+                LIMIT #{startPos}, #{showMinute}
+            </when>
+            <otherwise>  <!-- 인기순 -->
+                LIMIT 0, #{lastLimit}
+            </otherwise>
+        </choose>
+    </select>
+</mapper>

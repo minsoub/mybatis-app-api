@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.minute.mapper.MinuteSoundTrackMapper'>
+
+    <!-- 음원 상세 정보 조회 -->
+    <select id="selectSoundTrackDetail" resultType="kr.co.fns.app.api.minute.entity.MinuteSoundTrack">
+        SELECT
+               a.minute_song_id,
+               b.song_title,
+               b.song_singer as song_artist,
+               a.song_desc,
+               a.real_file_name,
+               a.disp_file_name,
+               a.song_play_time
+          FROM fantoo.fantoo_minute_song a,
+               fantoo2.SONG_LIST b
+         WHERE
+               a.minute_song_id = #{minuteSongId}
+           AND a.active_status = #{activeStatus}
+           AND a.minute_song_id = b.idx
+    </select>
+
+    <!-- 미닛과 음원 맵핑 등록 -->
+    <insert id="insertMappingTrack">
+        INSERT INTO fantoo.fantoo_minute_song_mapping (
+            minute_id,
+            minute_song_id,
+            create_date
+        ) VALUES (
+            #{minuteId},
+            #{minuteSongId},
+            now()
+        )
+    </insert>
+
+</mapper>

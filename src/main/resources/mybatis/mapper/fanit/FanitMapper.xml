@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.fanit.mapper.FanitMapper'>
+
+    <sql id="fanitSelect">
+        SELECT *
+        FROM fantoo2.FANIT_LIST
+        WHERE status=1
+        AND idx = #{idx}
+    </sql>
+
+    <select id="getFanitList" resultType="kr.co.fns.app.api.fanit.entity.FanitList">
+        SELECT *
+        FROM fantoo2.FANIT_LIST
+        WHERE idx = #{idx}
+    </select>
+
+    <!--팬잇 페이징 처리 질의문-->
+    <select id="getFanitPro" resultType="kr.co.fns.app.api.fanit.entity.FanitList">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getList */
+        SELECT FL.*, IFNULL(FLD.totalCnt, 0) AS totalVoteCnt
+        FROM (
+            SELECT *
+            FROM fantoo2.FANIT_LIST
+            WHERE status=1
+            AND svc_yn = 1
+            ORDER BY idx DESC
+            LIMIT #{pageSize} OFFSET #{startRow}
+        ) FL
+        LEFT JOIN (
+            SELECT sum(total_cnt) as totalCnt, fanit_id
+            FROM fantoo2.FANIT_LIST_DETAIL
+            GROUP BY fanit_id
+        ) FLD
+        ON FL.idx = FLD.fanit_id
+        ORDER BY FL.idx desc
+    </select>
+
+    <select id="getDetail" resultType="kr.co.fns.app.api.fanit.entity.FanitList">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getDetail */
+        SELECT FL.*, IFNULL(FLD.totalCnt, 0) AS totalVoteCnt, IFNULL(FS.totalStory, 0) AS totalStoryCnt
+        FROM (
+            <include refid="fanitSelect" />
+        ) FL
+        LEFT JOIN (
+            SELECT SUM(total_cnt) AS totalCnt,fanit_id
+            FROM fantoo2.FANIT_LIST_DETAIL
+            WHERE fanit_id = #{idx}
+            GROUP BY fanit_id
+        ) FLD ON FL.idx = FLD.fanit_id
+        LEFT JOIN (
+            SELECT count(*) as totalStory, fanit_id
+            FROM fantoo2.fanit_story
+            WHERE svc_yn = 1
+            AND fanit_id = #{idx}
+            GROUP BY fanit_id
+        ) FS ON FL.idx = FS.fanit_id
+    </select>
+
+    <select id="getListDetail" resultType="kr.co.fns.app.api.fanit.entity.FanitListDetail">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getListDetail */
+        SELECT
+                idx as fanit_detail_id
+                , fanit_id, fanit_prop_img
+                , fanit_prop_title
+                , svc_yn
+                , create_date
+                , total_cnt as voteCnt
+                , round( total_cnt / #{totalVoteCnt} * 100, 2) as voteRate
+        FROM fantoo2.FANIT_LIST_DETAIL
+        WHERE svc_yn = 1
+        AND fanit_id = #{idx}
+        ORDER By voteCnt DESC
+    </select>
+
+    <select id="getModifyFanitList" resultType="kr.co.fns.app.api.fanit.entity.FanitList">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getModifyFanitList */
+        SELECT FL.*, IFNULL(FP.totalVoteCnt, 0) AS totalVoteCnt, IFNULL(FS.totalStory, 0) AS totalStoryCnt
+        FROM (
+            <include refid="fanitSelect" />
+        ) FL
+        LEFT JOIN (
+            SELECT -1*sum(point) as totalVoteCnt, fanid_id
+            FROM fantoo2.fanit_point
+            WHERE fanid_id = #{idx}
+            GROUP BY fanid_id
+        )FP ON FL.idx = FP.fanid_id
+        LEFT JOIN (
+            SELECT count(*) as totalStory, fanit_id
+            FROM fantoo2.fanit_story
+            WHERE svc_yn = 1
+            AND fanit_id = #{idx}
+            GROUP BY fanit_id
+        )FS ON FL.idx = FS.fanit_id
+    </select>
+
+    <select id="getFanitDetails" resultType="kr.co.fns.app.api.fanit.entity.FanitListDetail">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getFanitDetails */
+        SELECT
+                idx AS fanit_detail_id
+                , fanit_id
+                , fanit_prop_img
+                , fanit_prop_title
+                , svc_yn
+                , create_date
+                , COALESCE(
+                    (
+                        SELECT -1 * SUM(point) AS voteCnt
+                        FROM fantoo2.fanit_point
+                        WHERE type = 0
+                        AND fanid_detail_id = fanit_detail_id
+                    ), 0
+                ) AS voteCnt
+                , ROUND(
+                    COALESCE(
+                        (
+                            SELECT -1 * SUM(point) AS voteCnt
+                            FROM fantoo2.fanit_point
+                            WHERE type = 0
+                            AND fanid_detail_id = fanit_detail_id
+                        ) / #{totalVoteCnt} * 100, 0
+                    ), 2
+                ) AS voteRate
+        FROM fantoo2.FANIT_LIST_DETAIL
+        WHERE svc_yn = 1
+        AND fanit_id = #{idx}
+        ORDER BY voteCnt DESC
+    </select>
+
+    <update id="modifyFanitListDetail">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.modifyFanitListDetail */
+        UPDATE fantoo2.FANIT_LIST_DETAIL
+        SET total_cnt = #{totalVoteCnt}
+        WHERE idx = #{idx}
+    </update>
+
+    <select id="getUpdateFanitList" resultType="kr.co.fns.app.api.fanit.entity.FanitList">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getUpdateFanitList */
+        SELECT *
+        FROM fantoo2.FANIT_LIST
+        WHERE start_date <![CDATA[<=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+        AND end_date <![CDATA[>=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+        AND status = 1
+        AND svc_yn = 1
+        ORDER BY idx DESC
+    </select>
+
+    <!--팬잇 리스트 현재 시간으로 참석 가능 유무 질의문-->
+    <select id="isFanitPro" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isFanitPro */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.FANIT_LIST
+        WHERE start_date <![CDATA[<=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+        AND end_date <![CDATA[>=]]> DATE_FORMAT(NOW(), '%Y-%m-%d')
+        AND idx = #{idx}
+        /*AND status = 1
+        AND svc_yn = 1*/
+    </select>
+
+    <!--팬잇 액수 사용시 현재 보유량보다 작은지 체크하는 질의문-->
+    <select id="isFanitPointUse" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isFanitPointUse */
+        SELECT IF(SUM(point) >= #{point}, 1, 0) AS result
+        FROM fantoo2.fanit_point
+        WHERE integ_uid = #{integUid}
+    </select>
+
+    <!--팬잇 액수 totayCheck = true이면 금일 소비량 false이면 전체 보유액수 질의문-->
+    <select id="getFanitUseAblePoint" resultType="java.lang.Integer">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getFanitUseAblePoint */
+        SELECT IFNULL(sum(point), 0)    as totalpoint
+        FROM fantoo2.fanit_point
+        WHERE integ_uid = #{integUid}
+        <if test="todayCheck">
+            AND type = 0
+            AND create_day = DATE_FORMAT(NOW(), '%Y-%m-%d')
+        </if>
+    </select>
+
+    <!--팬잇 포인트 내역 저장 질의문-->
+    <insert id="insertFanitPoint" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.insertFanitPoint */
+        INSERT INTO fantoo2.fanit_point (
+            type
+            <if test="fanitId != 0">
+                , fanid_id
+            </if>
+            <if test="fanitDetailId != 0">
+                , fanid_detail_id
+            </if>
+            <if test="code != null">
+                , code
+            </if>
+            , integ_uid
+            , point
+            , user_ip
+            , create_date
+            , create_day
+            <if test="rewardType != null">
+                , reward_type
+            </if>
+            , country
+            , country_code
+            <if test="description != null">
+                , description
+            </if>
+        )
+        VALUES(
+            #{type}
+            <if test="fanitId != 0">
+                , #{fanitId}
+            </if>
+            <if test="fanitDetailId != 0">
+                , #{fanitDetailId}
+            </if>
+            <if test="code != null">
+                , #{code}
+            </if>
+            , #{integUid}
+            , #{point}
+            , #{userIp}
+            , NOW()
+            , DATE_FORMAT(NOW(), '%Y-%m-%d')
+            <if test="rewardType != null">
+                , #{rewardType}
+            </if>
+            , #{country}
+            , #{countryCode}
+            <if test="description != null">
+                , #{description}
+            </if>
+        )
+    </insert>
+
+    <!--금일 아모페 리워드 참석횟수 질의문-->
+    <select id="getTodayPointCnt" resultType="java.lang.Integer">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getTodayPointCnt */
+        SELECT count(idx) as totalcount
+        FROM fantoo2.fanit_point
+        WHERE create_day = DATE_FORMAT(NOW(), '%Y-%m-%d')
+        AND code = #{modelId}
+        AND integ_uid = #{integUid}
+    </select>
+
+    <!--금일 로그인 리워드 참석여부 질의문-->
+    <select id="isTodayLoginReward" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isTodayLoginReward */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.fanit_point
+        WHERE type = 1
+        AND reward_type = 'LOGIN_REWARD'
+        AND integ_uid = #{integUid}
+        AND CREATE_DAY = DATE_FORMAT(NOW(), '%Y-%m-%d')
+    </select>
+
+    <!--금일 아모페 참석 횟수 질의문-->
+    <select id="isTodayAmofeReward" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isTodayAmofeReward */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.fanit_point
+        WHERE type = 1
+        AND reward_type = 'AMOFE2023_REWARD'
+        AND integ_uid = #{integUid}
+        AND CREATE_DATE  <![CDATA[>=]]> DATE_SUB(NOW(), INTERVAL 2 HOUR)
+        ORDER BY idx desc
+        LIMIT 1
+    </select>
+
+    <!--포인트 적립 내역 질의문-->
+    <select id="getMyPointHistory" resultType="kr.co.fns.app.api.fanit.entity.FanitPoint">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getMyPointHistory */
+        SELECT *
+        FROM fantoo2.fanit_point
+        WHERE integ_uid = #{integUid}
+        <if test="type != null ">
+            AND type = #{type}
+        </if>
+        ORDER BY idx DESC
+    </select>
+
+    <select id="isIntegUidCheck" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isIntegUidCheck */
+        SELECT if(COUNT(users_id) > 0, 1, 0)
+        FROM fantoo.users
+        WHERE integ_uid = #{integUid}
+        AND user_status = 0
+    </select>
+
+    <select id="isFanitListDetail" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isFanitListDetail */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.FANIT_LIST_DETAIL
+        WHERE idx = #{idx}
+        AND svc_yn = 1
+    </select>
+
+    <!--1일제한횟수가 있는 포인트 지불에 대한 포인트 지불 가능 유무-->
+    <select id="isTodayFanitPayment" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isTodayFanitPayment */
+        SELECT if(COUNT(idx) > ${possibleDayCnt} - 1, 1, 0)
+        FROM fantoo2.fanit_point
+        WHERE reward_type = #{rewardType}
+        AND integ_uid = #{integUid}
+        AND type = #{type}
+        AND create_day = DATE_FORMAT(NOW(), '%Y-%m-%d')
+    </select>
+
+    <!--금일 해당 컨텐츠댓글로 작성하여 포인트를 얻은적이있는지 확인-->
+    <select id="isTodayCommunityFanitPayment" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isTodayCommunityFanitPayment */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.fanit_point
+        WHERE reward_type = #{rewardType}
+        AND integ_uid = #{integUid}
+        AND type = #{type}
+        AND create_day = DATE_FORMAT(NOW(), '%Y-%m-%d')
+        AND code = #{code}
+    </select>
+
+    <!--reward에따른 code(각각의 고유 컨텐츠)에 포인트 적립가능 유무-->
+    <select id="isRewardFanitPayment" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.isRewardFanitPayment */
+        SELECT if(COUNT(idx) > ${possibleCnt} - 1, 1, 0)
+        FROM fantoo2.fanit_point
+        WHERE reward_type = #{rewardType}
+        AND integ_uid = #{integUid}
+        AND type = #{type}
+        <if test="!rewardType.equals('CLUB_CREATE_REWARD') and code != null">
+            AND code = #{code}
+        </if>
+    </select>
+
+    <!--가입클럽 가입장 가져오기-->
+    <select id="getClubManage" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq" resultType="java.lang.String">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getClubManage */
+        SELECT integ_uid
+        FROM fantoo.club_manage
+        where club_id = #{code}
+    </select>
+
+    <!--추천인 조회-->
+    <select id="getReferralUser" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq" resultType="java.lang.String">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getReferralUser */
+        SELECT integ_uid
+        FROM fantoo.users
+        WHERE referral_code = #{code}
+        AND user_status = 0
+    </select>
+
+    <select id="getJoinRewardCnt" parameterType="kr.co.fns.app.api.fanit.model.request.FanitPointInsertReq" resultType="java.lang.Integer">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitMapper.getJoinRewardCnt */
+        SELECT ${description} DIV 50 - (SELECT COUNT(idx) FROM fantoo2.fanit_point WHERE reward_type = 'CLUB_JOIN_REWARD' AND integ_uid = #{integUid} AND code = #{code})
+    </select>
+
+</mapper>

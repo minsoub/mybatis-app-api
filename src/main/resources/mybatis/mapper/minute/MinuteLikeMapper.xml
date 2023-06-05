@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.minute.mapper.MinuteLikeMapper'>
+
+    <!-- Minute like 상태 체크 -->
+    <select id="getCurrentMinuteLikeType" resultType="string">
+        SELECT
+               like_type
+          FROM fantoo2.fantoo_minute_likes
+         WHERE
+               sub_idx = #{idx}
+           AND sub_type = #{subType}
+           AND integ_uid = #{integUid}
+    </select>
+
+    <!-- Minute Like 삭제 처리 -->
+    <delete id="deleteMinuteLike">
+        DELETE
+          FROM fantoo2.fantoo_minute_likes
+         WHERE
+               sub_type = #{subType}
+           AND sub_idx = #{subIdx}
+           AND integ_uid = #{integUid}
+    </delete>
+
+    <!-- Minute Like 신규 등록 -->
+    <insert id="insertMinuteLike" useGeneratedKeys="true" keyColumn="idx">
+        INSERT INTO fantoo2.fantoo_minute_likes (
+            sub_type,
+            sub_idx,
+            integ_uid,
+            like_type,
+            updated_date
+        ) VALUES (
+            #{subType},
+            #{subIdx},
+            #{integUid},
+            #{likeType},
+            now()
+        ) ON DUPLICATE KEY UPDATE like_type = #{likeType}, updated_date = now()
+    </insert>
+
+</mapper>

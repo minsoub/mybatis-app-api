@@ -1,0 +1,148 @@
+plugins {
+	id 'org.springframework.boot' version '2.6.6'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+}
+
+group = 'kr.co.fns'
+version = 'API_SNAPSHOT'
+sourceCompatibility = '11'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+jar {
+	enabled = false
+}
+
+dependencies {
+	/**
+	 * spring
+	 */
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-security
+	implementation 'org.springframework.boot:spring-boot-starter-security:2.6.6'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-validation
+	implementation 'org.springframework.boot:spring-boot-starter-validation:2.6.6'
+
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+
+	implementation 'org.springframework.boot:spring-boot-starter-batch:2.7.0'
+
+	/**
+	 * Util..
+	 */
+	// https://mvnrepository.com/artifact/com.fasterxml.uuid/java-uuid-generator
+	implementation 'com.fasterxml.uuid:java-uuid-generator:3.2.0'
+
+	// https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple
+	implementation 'com.googlecode.json-simple:json-simple:1.1.1'
+
+	// https://mvnrepository.com/artifact/com.google.code.gson/gson
+	implementation 'com.google.code.gson:gson:2.9.0'
+
+	/**
+	 * 23/03/18, Apple M1칩 OS부터 빌드시 이슈가 있어 추가. webflux로 인해 발생한걸로 보임. -jyson ,
+	 */
+	// https://mvnrepository.com/artifact/io.netty/netty-resolver-dns-native-macos
+	implementation 'io.netty:netty-resolver-dns-native-macos:4.1.90.Final:osx-aarch_64'
+
+	// OCI Console에서 권한 설정 필요.
+	//	- allow any-user to manage queues in compartment compartment-name
+	//	- allow any-user to manage queue-pull in compartment compartment-name
+	//	- allow any-user to manage queue-push in compartment compartment-name
+	// OCI Java SDK
+	implementation 'com.oracle.oci.sdk:oci-java-sdk-queue:3.14.0'
+	implementation 'com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey:3.14.0'
+
+	/**
+	 * swagger
+	 */
+	// https://mvnrepository.com/artifact/io.springfox/springfox-boot-starter
+	//implementation 'io.springfox:springfox-boot-starter:3.0.0'
+
+	implementation 'org.springdoc:springdoc-openapi-ui:1.6.9'
+	//implementation 'org.springdoc:springdoc-openapi-core:1.6.9'
+
+	/**
+	 * mail
+	 */
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail
+	implementation 'org.springframework.boot:spring-boot-starter-mail:2.6.6'
+
+	/**
+	 * DB, Mysql
+	 */
+	// https://mvnrepository.com/artifact/mysql/mysql-connector-java
+	implementation 'mysql:mysql-connector-java:8.0.28'
+
+	// https://mvnrepository.com/artifact/org.mybatis.spring.boot/mybatis-spring-boot-starter
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.2.2'
+
+	// https://mvnrepository.com/artifact/org.bgee.log4jdbc-log4j2/log4jdbc-log4j2-jdbc4.1
+	implementation 'org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:1.16'
+
+	// https://mvnrepository.com/artifact/com.zaxxer/HikariCP
+	implementation 'com.zaxxer:HikariCP:5.0.1'
+
+	/**
+	 * redis
+	 */
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis:2.6.6'
+
+	/**
+	 * etc
+	 */
+	// https://mvnrepository.com/artifact/org.modelmapper/modelmapper
+	implementation 'org.modelmapper:modelmapper:3.1.0'
+
+	// https://mvnrepository.com/artifact/org.apache.httpcomponents/httpcore
+	implementation 'org.apache.httpcomponents:httpcore:4.4.16'
+
+	// https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
+	implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+
+	/**
+	 * jwt
+	 */
+	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-impl
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+	/**
+	 * open graph tag
+	 */
+	// https://mvnrepository.com/artifact/net.sourceforge.htmlcleaner/htmlcleaner
+	implementation group: 'net.sourceforge.htmlcleaner', name: 'htmlcleaner', version: '2.26'
+
+	// https://mvnrepository.com/artifact/org.jsoup/jsoup
+	implementation group: 'org.jsoup', name: 'jsoup', version: '1.15.3'
+
+	/*
+	 * webClient
+	 */
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

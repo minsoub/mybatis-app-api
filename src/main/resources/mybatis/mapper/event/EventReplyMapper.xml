@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.event.mapper.EventReplyMapper'>
+
+    <select id="getEventStoryReplyList" resultType="kr.co.fns.app.api.event.entity.EventStoryReply">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventReplyMapper.getEventStoryReplyList */
+        SELECT
+            ESR.comment
+            , ESR.create_date
+            , ESR.story_id
+            , ESR.idx
+            , ESR.svc_yn
+            , ESR.integ_uid
+            , IF(users.user_nick != '', users.user_nick, '')
+            , IF(users.user_photo != '', users.user_photo, '')
+        FROM fantoo2.EVENT_STORY_REPLY ESR LEFT JOIN fantoo.users users ON ESR.integ_uid = users.integ_uid
+        WHERE ESR.svc_yn = 1
+        AND ESR.story_id = #{storyId}
+        ORDER BY ESR.idx DESC
+        LIMIT #{pageSize} OFFSET #{startRow}
+    </select>
+
+    <select id="isEventStory" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventReplyMapper.isEventStory */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.EVENT_STORY
+        WHERE idx = #{storyId}
+        AND svc_yn = 1
+    </select>
+    
+    <insert id="insertEventStoryReply">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventReplyMapper.insertEventStoryReply */
+        INSERT INTO fantoo2.EVENT_STORY_REPLY (
+            story_id
+            , integ_uid
+            , comment
+            , user_ip
+            , create_date
+            , svc_yn
+            , country
+            , country_code
+        )
+        VALUES(
+            #{storyId}
+            , #{integUid}
+            , #{comment}
+            , #{userIp}
+            , NOW()
+            , '1'
+            , #{country}
+            , #{countryCode}
+        )
+    </insert>
+
+    <select id="getEventStoryReplyId" resultType="java.lang.Integer">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventReplyMapper.getEventStoryReplyId */
+        SELECT if(MAX(idx) > 0, MAX(idx), 0)
+        FROM fantoo2.EVENT_STORY_REPLY
+        WHERE integ_uid = #{integUid}
+        ORDER BY idx DESC
+    </select>
+
+    <select id="isEventReply" resultType="java.lang.Boolean">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventReplyMapper.isEventReply */
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.EVENT_STORY_REPLY
+        WHERE idx = #{replyStoryId}
+        AND integ_uid = #{integUid}
+    </select>
+
+    <update id="deleteEventStoryReply">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventReplyMapper.deleteEventStoryReply */
+        UPDATE fantoo2.EVENT_STORY_REPLY
+        SET svc_yn = 0
+        WHERE idx = #{replyStoryId}
+        AND story_id = #{storyId}
+    </update>
+</mapper>

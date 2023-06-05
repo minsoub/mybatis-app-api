@@ -1,0 +1,422 @@
+spring:
+  profiles:
+    active: local # dev environment
+  main:
+    allow-bean-definition-overriding: true
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+#  mvc: #Swagger
+#    pathmatch:
+#      matching-strategy: ANT_PATH_MATCHER
+smtp :
+  host: xxx.xxx.xxx
+  port: 25
+  username: xxxxx@xxxxx
+  password: xxxxxx
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics, prometheus, health
+  health:
+    redis:
+      enabled: false
+application:
+  version: /v1
+  prefix: /api
+  exclude-prefix-path: springdoc
+
+jwt:
+  secret: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+server:
+  port: 9090
+  servlet:
+    session:
+      timeout: 50m
+  http2:
+    enabled: true
+  shutdown: graceful
+
+# 추후 분리 필요 (리전별)
+
+---
+# local environment
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    hikari:
+      master:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxx.xxx.xxx.xxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxx
+        password: xxxxxx
+        read-only: false
+        connection-timeout: 10000
+        maximum-pool-size: 10
+        test-on-borrow: true
+        connection-test-query: SELECT 1
+      slave:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxx.xxx.xxx.xxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxx
+        password: xxxxxx
+        read-only: true
+        connection-timeout: 10000
+        maximum-pool-size: 10
+        test-on-borrow: true
+        connection-test-query: SELECT 1
+  sso:
+    auth-url: https://xxxxx.co.kr/v1/access_token/info
+    client-id: test
+    client-secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# log4jdbc, Mybatis Console Log
+logging:
+  level:
+    root: DEBUG
+    com:
+      zaxxer:
+        hikari: INFO
+    javax:
+      sql:
+        DataSource: OFF
+    jdbc:
+      audit: OFF
+      resultset: OFF
+      resultsettable: INFO  #SQL 결과 데이터 Table을 로그로 남긴다.
+      sqlonly: OFF     #SQL만 로그로 남긴다.
+      sqltiming: INFO    #SQL과 소요시간을 표기한다.
+      connection : OFF  # 커넥션 확인가능
+    org:
+      springframework.jdbc.datasource.DataSourceTransactionManager: INFO
+      hibernate:
+        SQL: INFO
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    io:
+      lettuce:
+        core:
+          protocol: INFO
+    hikari:
+      HikariConfig: INFO
+
+oci:
+  api-tenancy: xxxxxxxxxxxxxxxxx
+  api-user: xxxxxxxxxxxxxxxx
+  region: ap-seoul-1
+  finger-print: xxxxxxxxxxxxxxxxxxx
+  pass-phrase: N
+  key-file: xxxxxxxxxxxxxxxx
+  endpoint: https://xxxxxxxxxxxxxxxxxxxx
+  queue-name: xxxxxxxxxxxxxxxxxxxxxxx
+---
+# dev environment
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    hikari:
+      master:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxx.xxx.xxx.xxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: false
+        connection-timeout: 10000
+        maximum-pool-size: 10
+        test-on-borrow: true
+        connection-test-query: SELECT 1
+      slave:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxx.xxx.xxx.xxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: true
+        connection-timeout: 10000
+        maximum-pool-size: 10
+        test-on-borrow: true
+        connection-test-query: SELECT 1
+  sso:
+    auth-url: https://xxx.xxx.xxx/v1/access_token/info
+    client-id: test
+    client-secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# log4jdbc, Mybatis Console Log
+logging:
+  config: classpath:logback-spring-dev.xml
+  level:
+    com:
+      zaxxer:
+        hikari: INFO
+    javax:
+      sql:
+        DataSource: OFF
+    jdbc:
+      audit: OFF
+      resultset: OFF
+      resultsettable: INFO  #SQL 결과 데이터 Table을 로그로 남긴다.
+      sqlonly: OFF     #SQL만 로그로 남긴다.
+      sqltiming: INFO    #SQL과 소요시간을 표기한다.
+      connection : OFF  # 커넥션 확인가능
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    io:
+      lettuce:
+        core:
+          protocol: ERROR
+oci:
+  api-tenancy: xxxxxxxxxxxxxxxxx
+  api-user: xxxxxxxxxxxxxxxx
+  region: ap-seoul-1
+  finger-print: xxxxxxxxxxxxxxxxxxx
+  pass-phrase: N
+  key-file: xxxxxxxxxxxxxxxx
+  endpoint: https://xxxxxxxxxxxxxxxxxxxx
+  queue-name: xxxxxxxxxxxxxxxxxxxxxxx
+---
+# prod(KOR) environment
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    hikari:
+      master:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxxx.xxxx.xxxx.xxxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: false
+        connection-timeout: 10000
+        maximum-pool-size: 150
+        test-on-borrow: true
+#        connection-test-query: SELECT 1
+      slave:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxxx.xxxx.xxxx.xxxx:3307/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: true
+        connection-timeout: 10000
+        maximum-pool-size: 150
+        test-on-borrow: true
+#        connection-test-query: SELECT 1
+  sso:
+    auth-url: https://xxx.xxx.xxx/v1/access_token/info
+    client-id: xxxxxxxxxxxxxxxxx
+    client-secret: xxxxxxxxxxxxxxxxxxxxxxxxxxx
+# log4jdbc, Mybatis Console Log
+logging:
+  config: classpath:logback-spring-prod.xml
+  level:
+    com:
+      zaxxer:
+        hikari: ERROR
+    javax:
+      sql:
+        DataSource: OFF
+    jdbc:
+      audit: OFF
+      resultset: OFF
+      resultsettable: ERROR  #SQL 결과 데이터 Table을 로그로 남긴다.
+      sqlonly: OFF     #SQL만 로그로 남긴다.
+      sqltiming: INFO    #SQL과 소요시간을 표기한다.
+      connection : OFF  # 커넥션 확인가능
+    org:
+      springframework.jdbc.datasource.DataSourceTransactionManager: ERROR
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    io:
+      lettuce:
+        core:
+          protocol: ERROR
+    hikari:
+      HikariConfig: ERROR
+
+oci:
+  api-tenancy: xxxxxxxxxxxxxxxxx
+  api-user: xxxxxxxxxxxxxxxx
+  region: ap-seoul-1
+  finger-print: xxxxxxxxxxxxxxxxxxx
+  pass-phrase: N
+  key-file: xxxxxxxxxxxxxxxx
+  endpoint: https://xxxxxxxxxxxxxxxxxxxx
+  queue-name: xxxxxxxxxxxxxxxxxxxxxxx
+---
+# prod(SG) environment
+spring:
+  config:
+    activate:
+      on-profile: prod-sg
+  datasource:
+    hikari:
+      master:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxxx.xxxx.xxxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: false
+        connection-timeout: 10000
+        maximum-pool-size: 150
+        test-on-borrow: true
+#        connection-test-query: SELECT 1
+      slave:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxxx.xxxx.xxxx.xxxx:3307/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: true
+        connection-timeout: 10000
+        maximum-pool-size: 150
+        test-on-borrow: true
+#        connection-test-query: SELECT 1
+  sso:
+    auth-url: https://xxx.xxx.xxx/v1/access_token/info
+    client-id: xxxxxxxxxxxxxxxxx
+    client-secret: xxxxxxxxxxxxxxxxxxxxxxxxxxx
+# log4jdbc, Mybatis Console Log
+logging:
+  config: classpath:logback-spring-prod.xml
+  level:
+    com:
+      zaxxer:
+        hikari: ERROR
+    javax:
+      sql:
+        DataSource: OFF
+    jdbc:
+      audit: OFF
+      resultset: OFF
+      resultsettable: OFF  #SQL 결과 데이터 Table을 로그로 남긴다.
+      sqlonly: OFF     #SQL만 로그로 남긴다.
+      sqltiming: INFO    #SQL과 소요시간을 표기한다.
+      connection : OFF  # 커넥션 확인가능
+    org:
+      springframework.jdbc.datasource.DataSourceTransactionManager: ERROR
+      hibernate:
+        SQL: ERROR
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    io:
+      lettuce:
+        core:
+          protocol: ERROR
+    hikari:
+      HikariConfig: ERROR
+
+oci:
+  api-tenancy: xxxxxxxxxxxxxxxxx
+  api-user: xxxxxxxxxxxxxxxx
+  region: ap-seoul-1
+  finger-print: xxxxxxxxxxxxxxxxxxx
+  pass-phrase: N
+  key-file: xxxxxxxxxxxxxxxx
+  endpoint: https://xxxxxxxxxxxxxxxxxxxx
+  queue-name: xxxxxxxxxxxxxxxxxxxxxxx
+---
+# prod(US) environment
+spring:
+  config:
+    activate:
+      on-profile: prod-us
+  datasource:
+    hikari:
+      master:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://xxxx.xxxx.xxxx:3306/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: false
+        connection-timeout: 10000
+        maximum-pool-size: 50
+        max-life-time: 595000
+        leak-detection-threshold: 300000
+#        connection-test-query: SELECT 1
+        pool-name: master-pool
+        executor: Async
+      slave:
+        driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+        jdbc-url: jdbc:log4jdbc:mysql://XXX.xxxx.xxxx.xxxx:3307/fantoo?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&autoReconnect=true&autoReconnectForPolls=true&allowMultiQueries=true&allowPublicKeyRetrieval=true
+        username: xxxxxxxxx
+        password: XXXXXXXXX
+        read-only: true
+        connection-timeout: 10000
+        maximum-pool-size: 50
+        max-life-time: 595000
+        leak-detection-threshold: 300000
+#        connection-test-query: SELECT 1
+        pool-name: slave-pool
+        executor: Async
+  task:
+    execution:
+      master:
+        core-size: 20
+        max-size: 150
+      slave:
+        core-size: 20
+        max-size: 150
+  sso:
+    auth-url: https://xxx.xxx.xxx/v1/access_token/info
+    client-id: xxxxxxxxxxxxxxxxx
+    client-secret: xxxxxxxxxxxxxxxxxxxxxxxxxxx
+# log4jdbc, Mybatis Console Log
+logging:
+  config: classpath:logback-spring-prod.xml
+  level:
+    com:
+      zaxxer:
+        hikari:
+          pool:
+            PoolBase: ERROR
+    javax:
+      sql:
+        DataSource: OFF
+    jdbc:
+      audit: OFF
+      resultset: OFF
+      resultsettable: OFF  #SQL 결과 데이터 Table을 로그로 남긴다.
+      sqlonly: OFF     #SQL만 로그로 남긴다.
+      sqltiming: INFO    #SQL과 소요시간을 표기한다.
+      connection : OFF  # 커넥션 확인가능
+    org:
+      springframework.jdbc.datasource.DataSourceTransactionManager: ERROR
+      hibernate:
+        SQL: ERROR
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    io:
+      lettuce:
+        core:
+          protocol: ERROR
+    hikari:
+      HikariConfig: ERROR
+
+oci:
+  api-tenancy: xxxxxxxxxxxxxxxxx
+  api-user: xxxxxxxxxxxxxxxx
+  region: ap-seoul-1
+  finger-print: xxxxxxxxxxxxxxxxxxx
+  pass-phrase: N
+  key-file: xxxxxxxxxxxxxxxx
+  endpoint: https://xxxxxxxxxxxxxxxxxxxx
+  queue-name: xxxxxxxxxxxxxxxxxxxxxxx

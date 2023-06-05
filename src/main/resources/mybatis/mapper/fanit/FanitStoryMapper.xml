@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.fanit.mapper.FanitStoryMapper'>
+
+    <select id="getFanitStoryList" resultType="kr.co.fns.app.api.fanit.entity.FanitStory">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitStoryMapper.getFanitStoryList */
+        SELECT
+            FS.comment
+            , FS.create_date
+            , FS.fanit_id
+            , FS.idx
+            , FS.svc_yn
+            , FS.integ_uid
+            , IF(users.user_nick != '', users.user_nick, '')
+            , IF(users.user_photo != '', users.user_photo, '')
+        FROM fantoo2.fanit_story FS LEFT JOIN fantoo.users users ON FS.integ_uid = users.integ_uid
+        WHERE FS.svc_yn = 1
+        AND FS.fanit_id = #{fanitId}
+        ORDER BY FS.idx DESC
+        LIMIT #{pageSize} OFFSET #{startRow}
+    </select>
+
+    <select id="isFanitList" resultType="java.lang.Boolean">
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.FANIT_LIST
+        WHERE status = 1
+        AND idx = #{fanitId}
+    </select>
+    
+    <insert id="insertFanitStory">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitStoryMapper.insertFanitStory */
+        INSERT INTO fantoo2.fanit_story (
+            fanit_id
+            , integ_uid
+            , comment
+            , user_ip
+            , create_date
+            , svc_yn
+            , country
+            , country_code
+        )
+        VALUES(
+            #{fanitId}
+            , #{integUid}
+            , #{comment}
+            , #{userIp}
+            , NOW()
+            , '1'
+            , #{country}
+            , #{countryCode}
+        )
+    </insert>
+
+    <select id="getFanitStoryId" resultType="java.lang.Integer">
+        SELECT if(MAX(idx) > 0, MAX(idx), 0)
+        FROM fantoo2.fanit_story
+        WHERE integ_uid = #{integUid}
+        ORDER BY idx DESC
+    </select>
+
+
+    <select id="isFanitStory" resultType="java.lang.Boolean">
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.fanit_story
+        WHERE idx = #{storyId}
+        AND integ_uid = #{integUid}
+    </select>
+
+    <update id="deleteFanitStory">
+        /* SQLID : kr.co.fns.app.api.fanit.mapper.FanitStoryMapper.deleteFanitStory */
+        UPDATE fantoo2.fanit_story
+        SET svc_yn = 0
+        WHERE idx = #{storyId}
+        AND fanit_id = #{fanitId}
+    </update>
+
+</mapper>

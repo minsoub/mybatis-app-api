@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.event.mapper.EventMapper'>
+
+    <select id="getEventStoryCnt" resultType="java.lang.Integer">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventMapper.getEventStoryCnt */
+        SELECT count(*) as total
+        FROM fantoo2.EVENT_STORY
+        WHERE svc_yn = 1
+        AND event_id = #{eventId}
+    </select>
+    
+    <select id="getEventStoryList" resultType="kr.co.fns.app.api.event.entity.EventStory">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventMapper.getEventStoryList */
+            SELECT
+                  ES.comment
+                , ES.create_date
+                , ES.event_id
+                , ES.idx
+                , ES.svc_yn
+                , ES.integ_uid
+                , IF(users.user_nick != '', users.user_nick, '')  AS user_nick
+                , IF(users.user_photo != '', users.user_photo, '') AS user_photo
+                , IFNULL(ESR.totalCnt, 0) AS reply_story_cnt
+            FROM fantoo2.EVENT_STORY ES
+                LEFT JOIN fantoo.users users ON ES.integ_uid = users.integ_uid
+                LEFT JOIN (
+                    SELECT count(*) AS totalCnt, story_id
+                      FROM fantoo2.EVENT_STORY_REPLY
+                     WHERE svc_yn = 1
+                     GROUP BY story_id
+                ) AS ESR ON ES.idx = ESR.story_id
+            WHERE ES.svc_yn = 1
+            AND ES.event_id = #{eventId}
+            ORDER BY ES.idx DESC
+            LIMIT #{pageSize} OFFSET #{startRow}
+    </select>
+    
+    <insert id="insertEventStory">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventMapper.insertEventStory */
+        INSERT INTO fantoo2.EVENT_STORY (
+            event_id
+            , integ_uid
+            , comment
+            , user_ip
+            , create_date
+            , svc_yn
+            , country
+            , country_code
+        )
+        VALUES(
+            #{eventId}
+            , #{integUid}
+            , #{comment}
+            , #{userIp}
+            , NOW()
+            , '1'
+            , #{country}
+            , #{countryCode}
+        )
+    </insert>
+
+    <select id="getEventStoryId" resultType="java.lang.Integer">
+        SELECT if(MAX(idx) > 0, MAX(idx), 0)
+        FROM fantoo2.EVENT_STORY
+        WHERE integ_uid = #{integUid}
+        ORDER BY idx DESC
+    </select>
+
+    <select id="isEvent" resultType="java.lang.Boolean">
+        SELECT if(COUNT(idx) > 0, 1, 0)
+        FROM fantoo2.EVENT_STORY
+        WHERE idx = #{storyId}
+        AND integ_uid = #{integUid}
+    </select>
+    
+    <update id="deleteEventStory">
+        /* SQLID : kr.co.fns.app.api.event.mapper.EventMapper.deleteEventStory */
+        UPDATE fantoo2.EVENT_STORY
+        SET svc_yn = 0
+        WHERE idx = #{storyId}
+        AND event_id = #{eventId}
+    </update>
+</mapper>

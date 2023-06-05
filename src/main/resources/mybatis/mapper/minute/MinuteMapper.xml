@@ -1,0 +1,637 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.minute.mapper.MinuteMapper'>
+
+    <select id="getMinute" resultType="kr.co.fns.app.api.minute.entity.Minute">
+        SELECT fm.idx
+             , fm.integ_uid
+        FROM fantoo2.fantoo_minute fm
+        WHERE idx = #{targetId}
+    </select>
+
+
+    <select id="getMinuteReply" resultType="kr.co.fns.app.api.minute.entity.MinuteReply">
+        SELECT fmr.idx
+             , fmr.integ_uid
+        FROM fantoo2.fantoo_minute_reply fmr
+        WHERE idx = #{targetId}
+    </select>
+
+    <select id="getContentAdminList" resultType="int">
+        SELECT
+                count(*)
+          FROM fantoo2.content_admin_list
+         WHERE integ_uid = #{integUid}
+           AND type = 'minute'
+    </select>
+
+    <select id="getDetail" resultType="kr.co.fns.app.api.minute.entity.MinuteDetail">
+        SELECT
+               a.idx, a.integ_uid, a.user_uid, a.lang, a.title, a.content, a.image, a.video, a.is_view,
+               a.scv_yn, a.view_count, a.good_count, a.bad_count, a.reply_count, a.created_date, a.update_date, b.like_type,
+               IF(c.sub_idx , true, false) as is_favorite,
+               IF( (e.target_integ_uid = a.integ_uid and e.integ_uid = #{integUid} and e.block_type = 'user') , true, false) as is_user_block,
+               IF( (d.target_integ_uid = a.integ_uid and d.integ_uid = #{integUid} and d.block_type = 'minute' and d.target_type = 'post' and d.target_id = a.idx) , true, false) as is_piece_block,
+               f.hashtag_list,
+               IF( LENGTH(g.minute_song_id) > 0, true, false) as is_sound_track,
+               g.minute_song_id
+          FROM fantoo2.fantoo_minute as a
+          LEFT JOIN fantoo2.fantoo_minute_likes AS b ON b.integ_uid = #{integUid}
+            AND b.sub_type = 'minute'
+            AND a.idx=b.sub_idx
+          LEFT JOIN fantoo2.fantoo_minute_favorites AS c ON c.integ_uid = #{integUid}
+            AND a.idx=c.sub_idx
+          LEFT JOIN fantoo.com_block as d ON d.target_integ_uid = a.integ_uid and d.block_type='minute' and d.integ_uid = #{integUid}
+          LEFT JOIN fantoo.com_block as e ON e.target_integ_uid = a.integ_uid and e.block_type='user' and e.integ_uid = #{integUid}
+          LEFT JOIN (
+              SELECT
+                  minute_id, group_concat(tag order by minute_hashtag_id ASC separator ',') as hashtag_list
+              FROM fantoo.fantoo_minute_hashtag
+              GROUP BY minute_id
+          ) AS f ON a.idx = f.minute_id
+          LEFT JOIN fantoo.fantoo_minute_song_mapping as g ON a.idx = g.minute_id
+        WHERE a.idx=#{idx}
+    </select>
+
+    <select id="getLastMinute" resultType="String">
+        SELECT
+               integ_uid
+          FROM fantoo2.fantoo_minute
+         WHERE
+               is_view = 1
+         ORDER BY idx DESC LIMIT 1
+    </select>
+
+    <select id="getMinuteReplyLast" resultType="String">
+        SELECT
+            integ_uid
+        FROM fantoo2.fantoo_minute_reply
+        WHERE
+              sub_idx = #{idx}
+          AND sub_type = 'minute'
+          AND is_view = 1
+        ORDER BY idx DESC LIMIT 1
+    </select>
+
+    <!-- 미닛 조회 수 증가 -->
+    <update id="updateViewCount">
+        UPDATE fantoo2.fantoo_minute
+           SET view_count = view_count + 1
+         WHERE
+               idx = #{idx}
+    </update>
+
+    <!-- 댓글 수 증가 -->
+    <update id="updateReplyCount">
+        UPDATE fantoo2.fantoo_minute
+           SET reply_count = reply_count + 1
+         WHERE
+               idx = #{idx}
+    </update>
+
+    <!-- Minute의 Reply count를 설정한다 -->
+    <update id="updateReplyCountSync">
+        UPDATE fantoo2.fantoo_minute
+        SET reply_count = #{replyCount}
+        WHERE
+            idx = #{idx}
+    </update>
+
+    <!-- 댓글 수 감소 -->
+    <update id="updateReplyMinus">
+        UPDATE fantoo2.fantoo_minute
+        SET reply_count = IF(reply_count > 0, (reply_count-1), 0)
+        WHERE
+            idx = #{idx}
+    </update>
+
+    <select id="getListMinuteTotal" resultType="int">
+        SELECT
+            COUNT(*) / #{showMinute} AS TOTAL
+        FROM
+            fantoo2.fantoo_minute
+        WHERE
+            is_view = 1
+        <choose>
+            <when test="sortingNum == 1">  <!-- 추천순 -->
+                AND created_date BETWEEN DATE_ADD(NOW(), INTERVAL -14 DAY ) AND now()  <!-- 현재 기준으로 72시간 전 -->
+            </when>
+            <when test="sortingNum == 2">  <!-- 인기순 -->
+                AND created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+            </when>
+            <when test="sortingNum == 3">  <!-- 최신순 -->
+                <!-- 최신순은 전부 가져오면 되어서 별도 query가 없음  -->
+            </when>
+            <when test="sortingNum == 4">  <!-- 선호순 -->
+                AND created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+            </when>
+            <when test="sortingNum == 5">  <!-- 답글순 -->
+                AND created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+            </when>
+            <when test="sortingNum == 6">  <!-- 조회순 -->
+                AND created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+            </when>
+            <when test="sortingNum == 7">  <!-- 내 작성 글 보기 -->
+                AND integ_uid=#{integUid}
+            </when>
+            <when test="sortingNum == 8">  <!-- 내 답글 보기 -->
+                AND idx IN (
+                        SELECT sub_idx
+                        FROM fantoo2.fantoo_minute_reply
+                        WHERE integ_uid = #{integUid} AND is_view=1 AND sub_type='minute'
+                        GROUP BY sub_idx
+                    )
+            </when>
+        </choose>
+        <if test="searchText != '' ">
+            AND (title like CONCAT('%',#{searchText},'%') OR idx in (select minute_id from fantoo.fantoo_minute_hashtag where tag=#{searchText}))
+        </if>
+
+    </select>
+
+    <select id="getListMinute" resultType="kr.co.fns.app.api.minute.entity.MinuteList">
+
+        SELECT
+                a.idx, a.integ_uid, a.user_uid, a.lang, a.title, a.content, a.image, a.video, a.is_view, a.scv_yn, a.view_count,
+                a.good_count, a.bad_count, a.reply_count, a.created_date, a.update_date,
+                IF(users.user_nick != '', users.user_nick, '') as user_nickname,
+                IF(users.user_photo != '', users.user_photo, '') as user_photo ,
+                b.like_type, IF(c.sub_idx , true, false) as is_favorite,
+                IF( (e.target_integ_uid = a.integ_uid and e.integ_uid = #{integUid} and e.block_type = 'user') , true, false) as is_user_block,
+                IF( (d.target_integ_uid = a.integ_uid and d.integ_uid = #{integUid} and d.block_type = 'minute' and d.target_type = 'post' and d.target_id = a.idx) , true, false) as is_piece_block
+                <if test="sortingNum == 1">
+                    ,IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -10 HOUR ) AND now() ,
+                         ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10, 10, a.reply_count)) * 2.5,
+                         IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -48 HOUR ) AND now() ,
+                             (
+                                (a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3))
+                                    + IF(a.reply_count>10,10,a.reply_count)
+                             ) * 0.5,
+                             IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -72 HOUR ) AND now() ,
+                                 ( (a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count) )* 0.2,
+                                 IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -168 HOUR ) AND now() ,
+                                     ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count))* 0.07,
+                                     ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count))* 0.02)))
+                        ) as sort_value,
+                     ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count))
+                    as origin_value
+                </if>
+                , f.hashtag_list
+                ,IF( LENGTH(g.minute_song_id) > 0, true, false) as is_sound_track
+                ,g.minute_song_id
+          FROM
+                fantoo2.fantoo_minute as a
+                LEFT JOIN fantoo2.fantoo_minute_likes AS b ON b.integ_uid = #{integUid}
+                        AND b.sub_type = "minute"
+                        AND a.idx=b.sub_idx
+                LEFT JOIN fantoo2.fantoo_minute_favorites AS c ON c.integ_uid = #{integUid}
+                        AND a.idx=c.sub_idx
+                LEFT JOIN fantoo.com_block as d ON d.target_integ_uid = a.integ_uid
+                          and d.block_type='minute' and d.target_type='post' and d.target_id=a.idx
+                          and d.integ_uid = #{integUid}
+                LEFT JOIN fantoo.users as users ON users.integ_uid = a.integ_uid
+                LEFT JOIN fantoo.com_block as e ON e.target_integ_uid = a.integ_uid
+                          and e.block_type="user" and e.integ_uid = #{integUid}
+                LEFT JOIN (
+                        SELECT
+                                minute_id, group_concat(tag order by minute_hashtag_id ASC separator ',') as hashtag_list
+                          FROM fantoo.fantoo_minute_hashtag
+                         GROUP BY minute_id
+                ) AS f ON a.idx = f.minute_id
+                LEFT JOIN fantoo.fantoo_minute_song_mapping as g ON a.idx = g.minute_id
+         WHERE
+             is_view = 1
+            <choose>
+                <when test="sortingNum == 1">  <!-- 추천순 -->
+                    AND a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -14 DAY ) AND now()  <!-- 현재 기준으로 72시간 전 -->
+                </when>
+                <when test="sortingNum == 2">  <!-- 인기순 -->
+                    AND a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+                </when>
+                <when test="sortingNum == 3">  <!-- 최신순 -->
+                    <!-- 최신순은 전부 가져오면 되어서 별도 query가 없음  -->
+                </when>
+                <when test="sortingNum == 4">  <!-- 선호순 -->
+                    AND a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+                </when>
+                <when test="sortingNum == 5">  <!-- 답글순 -->
+                    AND a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+                </when>
+                <when test="sortingNum == 6">  <!-- 조회순 -->
+                    AND a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -1 DAY ) AND now()   <!-- 현재 기준으로 24시간 전 -->
+                </when>
+                <when test="sortingNum == 7">  <!-- 내 작성 글 보기 -->
+                    AND a.integ_uid=#{integUid}
+                </when>
+                <when test="sortingNum == 8">  <!-- 내 답글 보기 -->
+                    AND a.idx IN (
+                        SELECT sub_idx
+                          FROM fantoo2.fantoo_minute_reply
+                         WHERE integ_uid = #{integUid} AND is_view=1 AND sub_type='minute'
+                         GROUP BY sub_idx
+                    ) and a.is_view = 1
+                </when>
+            </choose>
+
+            <if test="searchText != '' ">
+                AND (a.title like CONCAT('%',#{searchText},'%') OR a.idx in (select minute_id from fantoo.fantoo_minute_hashtag where tag=#{searchText}))
+            </if>
+
+            ORDER BY
+
+            <choose>
+                <when test="sortingNum == 1">  <!-- 추천순 -->
+                    sort_value DESC
+                </when>
+                <when test="sortingNum == 2">  <!-- 인기순 -->
+                    ((a.good_count * 3) - a.bad_count) + (a.reply_count * 2) DESC  <!-- ((좋아요*3) - 싫어요) + 댓글수*2  -->
+                </when>
+                <when test="sortingNum == 3">  <!-- 최신순 -->
+                    <!-- 최신순은 전부 가져오면 되어서 별도 query가 없음  -->
+                    idx DESC
+                </when>
+                <when test="sortingNum == 4">  <!-- 선호순 -->
+                    a.good_count - a.bad_count DESC
+                </when>
+                <when test="sortingNum == 5">  <!-- 답글순 -->
+                    a.reply_count DESC  <!-- 댓글 수 -->
+                </when>
+                <when test="sortingNum == 6">  <!-- 조회순 -->
+                    a.view_count DESC
+                </when>
+                <when test="sortingNum == 7">  <!-- 내 작성 글 보기 -->
+                    idx DESC
+                </when>
+                <when test="sortingNum == 8">  <!-- 내 답글 보기 -->
+                    idx DESC
+                </when>
+            </choose>
+
+            <choose>
+                <when test="nextCheck == true">  <!-- 추천순 -->
+                    LIMIT #{startPos}, #{showMinute}
+                </when>
+                <otherwise>  <!-- 인기순 -->
+                    LIMIT 0, #{lastLimit}
+                </otherwise>
+            </choose>
+
+    </select>
+
+
+    <select id="getListMinuteSpecificTotal" resultType="int">
+        SELECT
+        COUNT(*) / #{showMinute} AS TOTAL
+        FROM
+        fantoo2.fantoo_minute
+        WHERE
+              is_view = 1
+          AND integ_uid = #{targetUid}
+        <if test="searchText != '' ">
+            <choose>
+                <when test="classifiValue == 'total'">
+                    and match(title, content) against ('${searchText}' in boolean mode)
+                </when>
+                <otherwise>
+                    and user_nickname = #{searchText}
+                </otherwise>
+            </choose>
+        </if>
+    </select>
+
+    <select id="getListMinuteSpecific" resultType="kr.co.fns.app.api.minute.entity.MinuteList">
+
+        SELECT
+            a.idx, a.integ_uid, a.user_uid, a.lang, a.title, a.content, a.image, a.video, a.is_view, a.scv_yn, a.view_count,
+            a.good_count, a.bad_count, a.reply_count, a.created_date, a.update_date,
+            IF(users.user_nick != '', users.user_nick, '') as user_nickname,
+            IF(users.user_photo != '', users.user_photo, '') as user_photo ,
+            b.like_type, IF(c.sub_idx , true, false) as is_favorite,
+            IF( (e.target_integ_uid = a.integ_uid and e.integ_uid = #{integUid} and e.block_type = 'user') , true, false) as is_user_block,
+            IF( (d.target_integ_uid = a.integ_uid and d.integ_uid = #{integUid} and d.block_type = 'minute' and d.target_type = 'post' and d.target_id = a.idx) , true, false) as is_piece_block
+            <if test="sortingNum == 1">
+                ,IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -10 HOUR ) AND now() ,
+                ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10, 10, a.reply_count)) * 2.5,
+                IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -48 HOUR ) AND now() ,
+                (
+                (a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3))
+                + IF(a.reply_count>10,10,a.reply_count)
+                ) * 0.5,
+                IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -72 HOUR ) AND now() ,
+                ( (a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count) )* 0.2,
+                IF( a.created_date BETWEEN DATE_ADD(NOW(), INTERVAL -168 HOUR ) AND now() ,
+                ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count))* 0.07,
+                ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count))* 0.02)))
+                ) as sort_value,
+                ((a.view_count * 2) + ((a.good_count * 5) - (a.bad_count * 3)) + IF(a.reply_count>10,10,a.reply_count))
+                as origin_value
+            </if>
+            ,f.hashtag_list
+            ,IF( LENGTH(g.minute_song_id) > 0, true, false) as is_sound_track
+            ,g.minute_song_id
+        FROM
+            fantoo2.fantoo_minute as a
+            LEFT JOIN fantoo2.fantoo_minute_likes AS b ON b.integ_uid = #{integUid}
+                AND b.sub_type = "minute"
+                AND a.idx=b.sub_idx
+            LEFT JOIN fantoo2.fantoo_minute_favorites AS c ON c.integ_uid = #{integUid}
+                AND a.idx=c.sub_idx
+            LEFT JOIN fantoo.com_block as d ON d.target_integ_uid = a.integ_uid
+                and d.block_type='minute' and d.target_type='post' and d.target_id=a.idx
+                and d.integ_uid = #{integUid}
+            LEFT JOIN fantoo.users as users ON users.integ_uid = a.integ_uid
+            LEFT JOIN fantoo.com_block as e ON e.target_integ_uid = a.integ_uid
+                and e.block_type="user" and e.integ_uid = #{integUid}
+            LEFT JOIN (
+                SELECT
+                    minute_id, group_concat(tag order by minute_hashtag_id ASC separator ',') as hashtag_list
+                    FROM fantoo.fantoo_minute_hashtag
+                    GROUP BY minute_id
+            ) AS f ON a.idx = f.minute_id
+            LEFT JOIN fantoo.fantoo_minute_song_mapping as g ON a.idx = g.minute_id
+        WHERE
+              is_view = 1
+          AND a.integ_uid = #{targetUid}
+        <if test="searchText != '' ">
+            <choose>
+                <when test="classifiValue == 'total'">
+                    and match(a.title, a.content) against ('${searchText}' in boolean mode)
+                </when>
+                <otherwise>
+                    and user_nickname = #{searchText}
+                </otherwise>
+            </choose>
+        </if>
+
+        ORDER BY
+        <choose>
+            <when test="sortingNum == 1">  <!-- 추천순 -->
+                sort_value DESC
+            </when>
+            <when test="sortingNum == 2">  <!-- 인기순 -->
+                ((a.good_count * 3) - a.bad_count) + (a.reply_count * 2) DESC  <!-- ((좋아요*3) - 싫어요) + 댓글수*2  -->
+            </when>
+            <when test="sortingNum == 3">  <!-- 최신순 -->
+                <!-- 최신순은 전부 가져오면 되어서 별도 query가 없음  -->
+                idx DESC
+            </when>
+            <when test="sortingNum == 4">  <!-- 선호순 -->
+                a.good_count - a.bad_count DESC
+            </when>
+            <when test="sortingNum == 5">  <!-- 답글순 -->
+                a.reply_count DESC  <!-- 댓글 수 -->
+            </when>
+            <when test="sortingNum == 6">  <!-- 조회순 -->
+                a.view_count DESC
+            </when>
+            <when test="sortingNum == 7">  <!-- 내 작성 글 보기 -->
+                idx DESC
+            </when>
+            <when test="sortingNum == 8">  <!-- 내 답글 보기 -->
+                idx DESC
+            </when>
+            <when test="sortingNum == 9">
+                idx ASC
+            </when>
+        </choose>
+
+        <choose>
+            <when test="nextCheck == true">  <!-- 추천순 -->
+                LIMIT #{startPos}, #{showMinute}
+            </when>
+            <otherwise>  <!-- 인기순 -->
+                LIMIT 0, #{lastLimit}
+            </otherwise>
+        </choose>
+
+    </select>
+
+    <!-- 음원과 맵핑된 미닛 리스트 총 개수를 리턴한다.  -->
+    <select id="getListMinuteSoundTrackTotal" resultType="int">
+        SELECT
+              COUNT(*) / #{showMinute} AS TOTAL
+        FROM
+              fantoo2.fantoo_minute a,
+              fantoo.fantoo_minute_song_mapping b
+        WHERE
+              a.is_view = 1
+          AND a.idx = b.minute_id
+          AND b.minute_song_id = (
+                SELECT
+                       minute_song_id
+                  FROM fantoo.fantoo_minute_song
+                 WHERE
+                       minute_song_id = b.minute_song_id
+                   AND active_status = 1
+          )
+
+    </select>
+
+    <!-- 음원에 맵핑된 미닛 리스트를 조회한다.  -->
+    <select id="getListMinuteSoundTrack" resultType="kr.co.fns.app.api.minute.entity.MinuteList">
+
+        SELECT
+                a.idx, a.integ_uid, a.user_uid, a.lang, a.title, a.content, a.image,
+                a.video, a.is_view, a.scv_yn, a.view_count,
+                a.good_count, a.bad_count, a.reply_count, a.created_date, a.update_date,
+                IF(users.user_nick != '', users.user_nick, '') as user_nickname,
+                IF(users.user_photo != '', users.user_photo, '') as user_photo ,
+                b.like_type, IF(c.sub_idx , true, false) as is_favorite,
+                IF( (e.target_integ_uid = a.integ_uid and e.integ_uid = #{integUid} and e.block_type = 'user') , true, false) as is_user_block,
+                IF( (d.target_integ_uid = a.integ_uid and d.integ_uid = #{integUid} and d.block_type = 'minute'
+                            and d.target_type = 'post' and d.target_id = a.idx) , true, false) as is_piece_block,
+                f.hashtag_list,
+                IF( LENGTH(g.minute_song_id) > 0, true, false) as is_sound_track,
+                g.minute_song_id
+        FROM
+                fantoo2.fantoo_minute as a
+                LEFT JOIN fantoo2.fantoo_minute_likes AS b ON b.integ_uid = #{integUid}
+                    AND b.sub_type = "minute"
+                    AND a.idx=b.sub_idx
+                LEFT JOIN fantoo2.fantoo_minute_favorites AS c ON c.integ_uid = #{integUid}
+                    AND a.idx=c.sub_idx
+                LEFT JOIN fantoo.com_block as d ON d.target_integ_uid = a.integ_uid
+                    and d.block_type='minute' and d.target_type='post' and d.target_id=a.idx
+                    and d.integ_uid = #{integUid}
+                LEFT JOIN fantoo.users as users ON users.integ_uid = a.integ_uid
+                LEFT JOIN fantoo.com_block as e ON e.target_integ_uid = a.integ_uid
+                    and e.block_type="user" and e.integ_uid = #{integUid}
+                LEFT JOIN (
+                    SELECT
+                            minute_id, group_concat(tag order by minute_hashtag_id ASC separator ',') as hashtag_list
+                      FROM fantoo.fantoo_minute_hashtag
+                     GROUP BY minute_id
+                ) AS f ON a.idx = f.minute_id
+                JOIN fantoo.fantoo_minute_song_mapping as g ON a.idx = g.minute_id
+        WHERE
+              a.is_view = 1
+          AND g.minute_song_id = (
+                SELECT
+                       minute_song_id
+                  FROM fantoo.fantoo_minute_song
+                 WHERE
+                       minute_song_id = g.minute_song_id
+                   AND active_status = 1
+          )
+        ORDER BY idx DESC
+        <choose>
+            <when test="nextCheck == true">
+                LIMIT #{startPos}, #{showMinute}
+            </when>
+            <otherwise>
+                LIMIT 0, #{lastLimit}
+            </otherwise>
+        </choose>
+
+    </select>
+
+    <!-- Minute 신규 등록 -->
+    <insert id="insertMinute" useGeneratedKeys="true" keyColumn="idx" keyProperty="idx" parameterType="kr.co.fns.app.api.minute.model.request.MinuteInsertRequest">
+        INSERT INTO fantoo2.fantoo_minute (
+            lang,
+            integ_uid,
+            user_id,
+            user_nickname,
+            user_photo,
+            title,
+            content,
+            image,
+            video,
+            is_view,
+            created_date
+        ) VALUES (
+            #{lang},
+            #{integUid},
+            #{userId},
+            #{userNickname},
+            #{userPhoto},
+            #{title},
+            #{content},
+            #{image},
+            #{video},
+            #{isView},
+            now()
+        )
+    </insert>
+
+    <!-- Minute 수정  -->
+    <update id="updateMinute">
+        UPDATE fantoo2.fantoo_minute
+           SET
+               title = #{title}
+              ,video = #{video}
+              ,content = #{content}
+              ,image = #{image}
+              ,update_date = now()
+         WHERE
+               integ_uid = #{integUid}
+           AND idx = #{idx}
+    </update>
+
+    <!-- Minute 삭제 -->
+    <update id="deleteMinute">
+        UPDATE fantoo2.fantoo_minute
+           SET is_view = 0
+         WHERE
+               idx = #{idx}
+            <if test="isAdmin == false ">
+                AND integ_uid = #{integUid}
+            </if>
+    </update>
+
+    <!-- Minute 해시태그 등록  -->
+    <insert id="insertMinuteHashTag" useGeneratedKeys="true" parameterType="kr.co.fns.app.api.minute.entity.MinuteHashtag">
+        INSERT INTO fantoo.fantoo_minute_hashtag (
+               minute_id, tag, updated_date
+        ) VALUES
+        <foreach collection="hashtagList" item = "ht" separator=",">
+            (
+                #{ht.minuteId},
+                #{ht.tag},
+                now()
+            )
+        </foreach>
+    </insert>
+
+    <!-- User block list 조회 -->
+    <select id="getBlockList" resultType="int">
+        SELECT
+            count(*)
+        FROM fantoo.com_block
+        WHERE block_type = 'user'
+          AND integ_uid = #{integUid}
+          AND target_integ_uid = #{targetUid}
+    </select>
+
+    <!-- 등록 기간내 블랙 리스트인지 확인  -->
+    <select id="getBlackList" resultType="int">
+        <![CDATA[
+        SELECT
+                count(*)
+          FROM (
+                SELECT
+                        idx, create_date, term_day
+                  FROM fantoo2.content_black_list
+                 WHERE type = 'minute' and integ_uid = #{integUid}
+                 ORDER BY idx desc
+                 LIMIT 0, 1
+                ) AS a
+         WHERE
+                now() < DATE_ADD( a.create_date, INTERVAL a.term_day DAY )
+        ]]>
+    </select>
+
+    <!-- Minute Limit check -->
+    <select id="getMinuteLimit" resultType="int">
+        SELECT
+               count(*)
+          FROM fantoo2.fantoo_minute
+         WHERE
+               integ_uid = #{integUid}
+           AND DATE_FORMAT(created_date, '%Y-%m-%d') = DATE_FORMAT(now(), '%Y-%m-%d')
+         --  AND created_date BETWEEN now() AND DATE_FORMAT(DATE_ADD(now(), INTERVAL 1 DAY), '%Y-%m-%d 00:00:00')
+    </select>
+
+    <!-- 하루 동일 제목 등록 check -->
+    <select id="getMinuteTitleCheck" resultType="int">
+        SELECT
+            count(*)
+        FROM fantoo2.fantoo_minute
+        WHERE
+            integ_uid = #{integUid}
+          AND DATE_FORMAT(created_date, '%Y-%m-%d') = DATE_FORMAT(now(), '%Y-%m-%d')
+        --  AND created_date BETWEEN now() AND DATE_FORMAT(DATE_ADD(now(), INTERVAL 1 DAY), '%Y-%m-%d 00:00:00')
+          AND title = #{title}
+    </select>
+
+    <!-- good_count, bad_count 값을 설정한다 -->
+    <update id="updateLikeCount">
+        UPDATE fantoo2.fantoo_minute
+           SET
+                <choose>
+                    <when test="likeType == 'good'">  <!-- good_count ++ -->
+                        good_count = good_count + 1
+                    </when>
+                    <when test="likeType == 'good_cancel'">  <!-- good_count - -->
+                        good_count = good_count - 1
+                    </when>
+                    <when test="likeType == 'bad'">  <!-- bad_count ++ -->
+                        bad_count = bad_count + 1
+                    </when>
+                    <when test="likeType == 'bad_cancel'">  <!-- bad_count - -->
+                        bad_count = bad_count - 1
+                    </when>
+                </choose>
+         WHERE idx = #{idx}
+    </update>
+
+    <!-- Minute count 관련 항목을 조회한다. -->
+    <select id="selectCountType" resultType="kr.co.fns.app.api.minute.entity.MinuteResult">
+        SELECT
+            idx, view_count, good_count, bad_count, reply_count
+        FROM fantoo2.fantoo_minute
+        WHERE idx = #{idx}
+    </select>
+</mapper>

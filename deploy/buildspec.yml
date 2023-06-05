@@ -1,0 +1,56 @@
+#!/bin/bash
+
+SPRING_PROFILE=dev
+REPO_URI=icn.ocir.io/cnezvqhcud0s/fantoo-app-api
+JAR_FILE_NAME=./build/libs/fantoo-app-api-API_SNAPSHOT.jar
+CONTAINER_NAME=fantoo-app-api
+NAMESPACE=fantoo-dev-ns
+DEPLOYMENT_FILE=./deploy/fantoo-app-api-deployment.yml
+SERVICE_FILE=./deploy/fantoo-app-api-service.yml
+
+cd /var/lib/jenkins
+source .bashrc
+
+cd workspace/DEV-FANTOO-APP-API
+
+# 빌드된 결과를 도커 이미지를 만들어서 oci registry에 등록.
+# 젠킨스에서 이미 docker 저장소인 icn.ocir.io에 로그인 되어 있다. 
+echo Build started on `date`
+echo Build the Docker image ...
+sudo docker build -f deploy/Dockerfile -t $REPO_URI:latest --build-arg JAR_FILE=$JAR_FILE_NAME --build-arg PROFILES=${SPRING_PROFILE} .
+echo Build completed on `date`
+
+COMMIT_HASH=$(echo $(date +%Y%m%d_%H%M%S%Z))
+IMAGE_TAG=${COMMIT_HASH:=latest}
+
+echo $REPO_URI:$IMAGE_TAG
+sudo docker tag $REPO_URI:latest $REPO_URI:$IMAGE_TAG
+echo docker tag completed on `date`
+
+echo Pushing the Docker images ...
+ls -al
+sudo docker push $REPO_URI:latest
+sudo docker push $REPO_URI:$IMAGE_TAG
+
+echo Writing image definitions file...
+printf '[{"name":"%s", "imageUri":"%s"}]' $CONTAINER_NAME $REPO_URI:latest > imageDefinitions.json
+ls -al
+
+OCI_REGISTRY_URI=$REPO_URI:$IMAGE_TAG
+sed -i.bak 's#OCI_REGISTRY_URI#'"$OCI_REGISTRY_URI"'#' $DEPLOYMENT_FILE
+sed -i.bak 's#NAMESPACE#'"$NAMESPACE"'#' $DEPLOYMENT_FILE
+sed -i.bak 's#NAMESPACE#'"$NAMESPACE"'#' $SERVICE_FILE
+
+cat $DEPLOYMENT_FILE
+kubectl apply -f $DEPLOYMENT_FILE
+kubectl apply -f $SERVICE_FILE
+
+kubectl get pods -n $NAMESPACE
+
+
+sudo docker rmi $REPO_URI:$IMAGE_TAG
+sudo docker system prune --volumes
+
+
+
+

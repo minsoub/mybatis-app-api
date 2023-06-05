@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace='kr.co.fns.app.api.country.mapper.CountryMapper'>
+
+    <!--IP기반의 국가코드 추출 질의문-->
+    <select id="getIpNation" resultType="kr.co.fns.app.api.country.entity.CountryData">
+        /* SQLID : kr.co.fns.app.api.country.mapper.CountryMapper.getIpNation */
+        SELECT c.country, c.code as country_code
+        FROM fantoo2.ip2nationCountries c, fantoo2.ip2nation i
+        WHERE i.ip <![CDATA[<]]> INET_ATON(#{ip})
+        AND c.code = i.country
+        ORDER BY i.ip DESC LIMIT 0,1
+    </select>
+</mapper>
